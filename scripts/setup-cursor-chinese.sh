@@ -3,6 +3,7 @@ set -euo pipefail
 
 EXTENSION_ID="MS-CEINTL.vscode-language-pack-zh-hans"
 LOCALE="zh-cn"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 detect_cursor_user_dir() {
   case "$(uname -s)" in
@@ -12,8 +13,10 @@ detect_cursor_user_dir() {
     Linux)
       if [[ -d "${HOME}/.config/Cursor/User" ]]; then
         echo "${HOME}/.config/Cursor/User"
-      else
+      elif [[ -d "${HOME}/.cursor-server/data/User" ]]; then
         echo "${HOME}/.cursor-server/data/User"
+      else
+        echo ""
       fi
       ;;
     MINGW*|MSYS*|CYGWIN*)
@@ -27,6 +30,10 @@ detect_cursor_user_dir() {
       echo ""
       ;;
   esac
+}
+
+is_server_only_env() {
+  [[ -d "${HOME}/.cursor-server/data/User" && ! -d "${HOME}/.config/Cursor/User" ]]
 }
 
 find_cursor_cli() {
@@ -80,12 +87,48 @@ PY
   fi
 }
 
+print_client_steps() {
+  cat <<'EOF'
+
+========================================
+重要：界面语言需要在【本机 Cursor】设置
+========================================
+
+你当前连接的是云端环境。菜单、侧边栏、设置页等界面
+由你自己电脑上的 Cursor 客户端渲染，云端 Agent 无法直接修改。
+
+请在你本机 Cursor 里操作（约 30 秒）：
+
+1) 按 Ctrl+Shift+X（Mac: Cmd+Shift+X）
+   搜索 Chinese，安装：
+   Chinese (Simplified) Language Pack for Visual Studio Code
+   （Microsoft 官方）
+
+2) 按 Ctrl+Shift+P（Mac: Cmd+Shift+P）
+   输入：Configure Display Language
+   选择：中文(简体) / zh-cn
+
+3) 点击 Restart，或完全退出 Cursor 后重新打开
+
+如果还是英文，打开设置 JSON，确认有：
+  "locale": "zh-cn"
+EOF
+}
+
 main() {
   local user_dir
   user_dir="$(detect_cursor_user_dir)"
 
+  if is_server_only_env; then
+    echo "检测到云端 Cursor Server 环境，正在配置服务端..."
+    bash "${SCRIPT_DIR}/apply-server-chinese-locale.sh"
+    print_client_steps
+    exit 0
+  fi
+
   if [[ -z "$user_dir" ]]; then
-    echo "无法识别当前系统的 Cursor 配置目录。" >&2
+    echo "无法识别 Cursor 配置目录。" >&2
+    print_client_steps
     exit 1
   fi
 
@@ -98,14 +141,15 @@ main() {
     if "$cursor_cli" --install-extension "$EXTENSION_ID" --force; then
       echo "中文语言包安装完成"
     else
-      echo "自动安装失败，请手动在扩展市场搜索并安装 Chinese (Simplified) Language Pack" >&2
+      echo "自动安装失败，请按下方步骤手动安装。" >&2
     fi
   else
-    echo "未找到 cursor 命令行工具，请手动安装扩展: ${EXTENSION_ID}" >&2
+    echo "未找到 cursor 命令行工具，请按下方步骤手动安装扩展。" >&2
   fi
 
   echo
-  echo "设置完成。请完全退出并重新打开 Cursor，界面将切换为简体中文。"
+  echo "本地配置完成。请完全退出并重新打开 Cursor。"
+  print_client_steps
 }
 
 main "$@"

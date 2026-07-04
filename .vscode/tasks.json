@@ -1,0 +1,16 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "配置 Cursor 中文界面",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/setup-cursor-chinese.sh",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "focus": true
+      }
+    }
+  ]
+}
